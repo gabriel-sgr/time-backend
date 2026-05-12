@@ -14,6 +14,9 @@ connectDB();
 app.use(cors());
 app.use(express.json());
 app.use(morgan('dev'));
+app.get("/", (req, res) => {
+  res.send("Backend is running");
+});
 
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
