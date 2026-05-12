@@ -27,7 +27,11 @@ router.post('/', protect, async (req, res) => {
 
 router.put('/:id', protect, async (req, res) => {
   try {
-    const cls = await Class.findByIdAndUpdate(req.params.id, { name: req.body.name }, { new: true });
+    const updateData = {};
+    if (req.body.name) updateData.name = req.body.name;
+    if (typeof req.body.is_active === 'boolean') updateData.is_active = req.body.is_active;
+    
+    const cls = await Class.findByIdAndUpdate(req.params.id, updateData, { new: true });
     if (!cls) return res.status(404).json({ message: 'Not found' });
     res.json(cls);
   } catch (err) { res.status(400).json({ message: err.message }); }

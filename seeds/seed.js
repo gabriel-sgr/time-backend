@@ -9,6 +9,8 @@ const Classroom = require('../models/Classroom');
 const Subject = require('../models/Subject');
 const Timetable = require('../models/Timetable');
 const Schedule = require('../models/Schedule');
+const ClassSubject = require('../models/ClassSubject');
+const TeacherSubject = require('../models/TeacherSubject');
 
 const seed = async () => {
   await connectDB();
@@ -21,7 +23,9 @@ const seed = async () => {
     Classroom.deleteMany({}),
     Subject.deleteMany({}),
     Timetable.deleteMany({}),
-    Schedule.deleteMany({})
+    Schedule.deleteMany({}),
+    ClassSubject.deleteMany({}),
+    TeacherSubject.deleteMany({})
   ]);
 
   // Create admin account
@@ -53,7 +57,7 @@ const seed = async () => {
   const teachers = await Teacher.insertMany(teacherNames.map(name => ({ name })));
 
   // Create classrooms
-  const roomNames = ['Room 1', 'Room 2', 'Room 3', 'Room 4', 'Room 5', 'Room 6', 'Room 7', 'Room 8', 'Science Lab 1', 'Science Lab 2', 'Computer Lab', 'Library'];
+  const roomNames = ['S1A', 'S1B', 'S2A', 'S2B', 'S3A', 'S3B', 'S4A', 'S4B', 'S5 MCB', 'S5 PCB', 'S6 MCB', 'S6 PCB'];
   const classrooms = await Classroom.insertMany(roomNames.map(name => ({ name })));
 
   // Create schedules for Monday to Friday with new time periods
@@ -100,10 +104,69 @@ const seed = async () => {
 
   // Note: Timetable will be generated using the auto-generate feature
 
+  // Create Class-Subject assignments for S1A (Sample data for testing)
+  // S1A gets: Math (5 hours), English (4 hours), French (3 hours), Kinyarwanda (2 hours), Biology (3 hours), Chemistry (3 hours)
+  const s1a = classes[0]; // S1A
+  const s2a = classes[2]; // S2A
+  
+  const mathSubject = subjects[0];
+  const englishSubject = subjects[4];
+  const frenchSubject = subjects[5];
+  const kinyarwandaSubject = subjects[6];
+  const biologySubject = subjects[3];
+  const chemistrySubject = subjects[2];
+  const historySubject = subjects[7];
+  const computerSubject = subjects[10];
+
+  // Assign subjects to S1A with hours per week
+  await ClassSubject.insertMany([
+    // S1A
+    { class_id: s1a._id, subject_id: mathSubject._id, hours_per_week: 5, is_active: true },
+    { class_id: s1a._id, subject_id: englishSubject._id, hours_per_week: 4, is_active: true },
+    { class_id: s1a._id, subject_id: frenchSubject._id, hours_per_week: 3, is_active: true },
+    { class_id: s1a._id, subject_id: kinyarwandaSubject._id, hours_per_week: 2, is_active: true },
+    { class_id: s1a._id, subject_id: biologySubject._id, hours_per_week: 3, is_active: true },
+    { class_id: s1a._id, subject_id: chemistrySubject._id, hours_per_week: 3, is_active: true },
+    { class_id: s1a._id, subject_id: historySubject._id, hours_per_week: 2, is_active: true },
+    
+    // S2A (sample)
+    { class_id: s2a._id, subject_id: mathSubject._id, hours_per_week: 5, is_active: true },
+    { class_id: s2a._id, subject_id: englishSubject._id, hours_per_week: 4, is_active: true },
+    { class_id: s2a._id, subject_id: computerSubject._id, hours_per_week: 3, is_active: true }
+  ]);
+
+  // Assign teachers to subjects
+  const [t1, t2, t3, t4, t5, t6, t7, t8, t9, t10] = teachers;
+  
+  await TeacherSubject.insertMany([
+    { teacher_id: t1._id, subject_id: mathSubject._id, is_active: true },
+    { teacher_id: t2._id, subject_id: englishSubject._id, is_active: true },
+    { teacher_id: t3._id, subject_id: frenchSubject._id, is_active: true },
+    { teacher_id: t4._id, subject_id: kinyarwandaSubject._id, is_active: true },
+    { teacher_id: t5._id, subject_id: biologySubject._id, is_active: true },
+    { teacher_id: t6._id, subject_id: chemistrySubject._id, is_active: true },
+    { teacher_id: t7._id, subject_id: historySubject._id, is_active: true },
+    { teacher_id: t8._id, subject_id: computerSubject._id, is_active: true },
+    { teacher_id: t9._id, subject_id: mathSubject._id, is_active: true },
+    { teacher_id: t10._id, subject_id: englishSubject._id, is_active: true }
+  ]);
+
   console.log('Database seeded successfully!');
-  console.log('Login credentials:');
+  console.log('');
+  console.log('✅ Sample Data Created:');
+  console.log(`  • ${classes.length} Classes: ${classNames.slice(0, 3).join(', ')}, ...`);
+  console.log(`  • ${subjects.length} Subjects: ${subjectNames.slice(0, 5).join(', ')}, ...`);
+  console.log(`  • ${teachers.length} Teachers`);
+  console.log(`  • ${classrooms.length} Classrooms`);
+  console.log(`  • 10 Class-Subject Assignments (S1A and S2A)`);
+  console.log(`  • 10 Teacher-Subject Assignments`);
+  console.log(`  • Schedule configured for Monday-Friday with ${basePeriods.length} periods`);
+  console.log('');
+  console.log('🔐 Login credentials:');
   console.log('  Admin: username=admin, password=admin123');
   console.log('  Headteacher: username=headteacher, password=muhura2026');
+  console.log('');
+  console.log('📅 Next step: Go to Admin > Manage Timetable and click "Auto Generate" button');
   process.exit(0);
 };
 

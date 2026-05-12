@@ -40,6 +40,29 @@ router.post('/', protect, async (req, res) => {
   } catch (err) { res.status(400).json({ message: err.message }); }
 });
 
+// Bulk create/update class-subject assignments (assign multiple subjects to a class)
+router.post('/bulk-assign/subjects', protect, async (req, res) => {
+  try {
+    const { class_id, subject_ids, hours_per_week } = req.body;
+    
+    if (!class_id || !Array.isArray(subject_ids) || subject_ids.length === 0) {
+      return res.status(400).json({ message: 'class_id and subject_ids array are required' });
+    }
+
+    const assignments = [];
+    for (const subject_id of subject_ids) {
+      const assignment = await ClassSubject.findOneAndUpdate(
+        { class_id, subject_id },
+        { hours_per_week: hours_per_week || 1, is_active: true },
+        { upsert: true, new: true }
+      ).populate('class_id', 'name').populate('subject_id', 'name');
+      assignments.push(assignment);
+    }
+    
+    res.status(201).json(assignments);
+  } catch (err) { res.status(400).json({ message: err.message }); }
+});
+
 // Update class-subject assignment
 router.put('/:id', protect, async (req, res) => {
   try {

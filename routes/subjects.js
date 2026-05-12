@@ -62,11 +62,12 @@ router.post('/remove-from-class', protect, async (req, res) => {
 
 router.put('/:id', protect, async (req, res) => {
   try {
-    const { name, class_ids, weekly_hours } = req.body;
+    const { name, class_ids, weekly_hours, is_active } = req.body;
     const updateData = {};
     if (name) updateData.name = name;
     if (class_ids !== undefined) updateData.class_ids = class_ids;
     if (weekly_hours !== undefined) updateData.weekly_hours = weekly_hours;
+    if (typeof is_active === 'boolean') updateData.is_active = is_active;
     const item = await Subject.findByIdAndUpdate(req.params.id, updateData, { new: true }).populate('class_ids', 'name');
     if (!item) return res.status(404).json({ message: 'Not found' });
     res.json(item);

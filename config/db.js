@@ -2,9 +2,9 @@ const mongoose = require('mongoose');
 
 const connectDB = async () => {
   try {
-    const uri = 'mongodb+srv://sugiragbm:muyobokeSugira@cluster0.f36egnm.mongodb.net/?appName=Cluster0/timetable';
-    const conn = await mongoose.connect(uri);
-    console.log(`MongoDB Atlas Connected: ${conn.connection.host}`);
+    const conn = await mongoose.connect(MONGODB_URI );
+
+    console.log(`MongoDB Connected: ${conn.connection.host}`);
   } catch (error) {
     console.error(`Error: ${error.message}`);
     process.exit(1);

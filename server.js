@@ -11,10 +11,7 @@ const app = express();
 connectDB();
 
 // Middleware
-app.use(cors({
-  origin: ['https://time-frontend.onrender.com', 'http://localhost:3006', 'http://localhost:5173'],
-  credentials: true
-}));
+app.use(cors());
 app.use(express.json());
 app.use(morgan('dev'));
 
@@ -36,6 +33,13 @@ app.use('/api/time-periods', require('./routes/timePeriods'));
 app.use('/api/schedules', require('./routes/schedules'));
 app.use('/api/settings', require('./routes/settings'));
 
+// Serve React frontend in production
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '..', 'frontend', 'dist')));
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'frontend', 'dist', 'index.html'));
+  });
+}
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

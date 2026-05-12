@@ -8,11 +8,42 @@ const router = express.Router();
 router.post('/auto-generate', protect, async (req, res) => {
   try {
     const generator = new TimetableGenerator();
-    await generator.initialize();
+    
+    console.log('Step 1: Initializing timetable generator...');
+    try {
+      await generator.initialize();
+    } catch (initError) {
+      console.error('Initialization failed:', initError.message);
+      return res.status(400).json({ 
+        message: initError.message,
+        step: 'initialization',
+        hint: 'Please complete the setup checklist before generating timetables.'
+      });
+    }
+    
+    console.log('Step 2: Generating timetable...');
     const entries = await generator.generateTimetable();
+    
+    if (!entries || entries.length === 0) {
+      console.warn('No timetable entries were generated');
+      return res.status(400).json({ 
+        message: 'Failed to generate timetable entries. The schedule may not have enough time slots or resources.',
+        step: 'generation',
+        possibleCauses: [
+          'Not enough class periods in schedule',
+          'Insufficient classrooms for all time slots',
+          'Subjects require more hours than available time slots',
+          'Some teachers/classrooms might be over-assigned'
+        ],
+        hint: 'Check the server logs for detailed generation information.'
+      });
+    }
+
+    console.log('Step 3: Validating timetable...');
     const conflicts = await generator.validateTimetable();
     const stats = generator.getStatistics();
     
+    console.log('Step 4: Fetching populated entries...');
     const populated = await Timetable.find()
       .populate('class_id', 'name')
       .populate('subject_id', 'name weekly_hours')
@@ -20,14 +51,24 @@ router.post('/auto-generate', protect, async (req, res) => {
       .populate('classroom_id', 'name')
       .sort({ day_of_week: 1, start_time: 1 });
     
+    const conflictMessage = conflicts.length === 0 
+      ? '✅ No conflicts detected!'
+      : `⚠️ ${conflicts.length} conflict(s) detected`;
+    
     res.json({
+      success: true,
       entries: populated,
       conflicts,
       statistics: stats,
-      message: `Generated ${entries.length} timetable entries with ${conflicts.length} conflicts`
+      message: `✅ Generated ${entries.length} timetable entries. ${conflictMessage}`
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error('Timetable generation failed:', err);
+    res.status(500).json({ 
+      message: `Timetable generation failed: ${err.message}`,
+      step: 'generation',
+      error: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    });
   }
 });
 
@@ -195,34 +236,54 @@ router.get('/current-sessions', async (req, res) => {
       return res.json([]);
     }
 
-    // Get regular sessions for today's day of week
+    // Get regular sessions for today's day of week, only for active classes and subjects
     const regularSessions = await Timetable.find({
       day_of_week: currentDay,
       start_time: { $lte: currentTime },
       end_time: { $gt: currentTime },
       is_temporary: false
     })
-      .populate('class_id', 'name')
-      .populate('subject_id', 'name')
+      .populate({
+        path: 'class_id',
+        match: { is_active: true },
+        select: 'name'
+      })
+      .populate({
+        path: 'subject_id',
+        match: { is_active: true },
+        select: 'name'
+      })
       .populate('teacher_id', 'name')
       .populate('classroom_id', 'name');
 
-    // Get temporary sessions for today
+    // Get temporary sessions for today, only for active classes and subjects
     const tempSessions = await Timetable.find({
       is_temporary: true,
       temporary_date: { $gte: todayStart, $lt: todayEnd },
       start_time: { $lte: currentTime },
       end_time: { $gt: currentTime }
     })
-      .populate('class_id', 'name')
-      .populate('subject_id', 'name')
+      .populate({
+        path: 'class_id',
+        match: { is_active: true },
+        select: 'name'
+      })
+      .populate({
+        path: 'subject_id',
+        match: { is_active: true },
+        select: 'name'
+      })
       .populate('teacher_id', 'name')
       .populate('classroom_id', 'name');
 
+    // Filter out sessions where class or subject is inactive (null after populate)
+    const regularSessionsFiltered = regularSessions.filter(s => s.class_id && s.subject_id);
+    const tempSessionsFiltered = tempSessions.filter(s => s.class_id && s.subject_id);
+
     // Temporary sessions override regular ones for the same class
-    const tempClassIds = new Set(tempSessions.map(s => s.class_id._id.toString()));
-    const filtered = regularSessions.filter(s => !tempClassIds.has(s.class_id._id.toString()));
-    const allSessions = [...filtered, ...tempSessions];
+    const tempClassIds = new Set(tempSessionsFiltered.map(s => s.class_id._id.toString()));
+    const filtered = regularSessionsFiltered.filter(s => !tempClassIds.has(s.class_id._id.toString()));
+    const allSessions = [...filtered, ...tempSessionsFiltered];
 
     const result = allSessions.map(s => ({
       _id: s._id,
@@ -273,5 +334,17 @@ router.delete('/:id', protect, async (req, res) => {
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
+// GET /validate - Validate timetable for conflicts
+router.get('/validate', protect, async (req, res) => {
+  try {
+    const generator = new TimetableGenerator();
+    await generator.initialize();
+    const conflicts = await generator.validateTimetable();
+    res.json({ conflicts });
+  } catch (err) {
+    console.error('Validation error:', err);
+    res.status(500).json({ message: err.message });
+  }
+});
 
 module.exports = router;
