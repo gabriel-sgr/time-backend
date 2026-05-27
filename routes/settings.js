@@ -153,4 +153,21 @@ router.delete('/background', protect, async (req, res) => {
   } catch (err) { res.status(400).json({ message: err.message }); }
 });
 
+// DELETE logo
+router.delete('/logo', protect, async (req, res) => {
+  try {
+    const settings = await Settings.getSettings();
+    
+    if (settings.logo_path) {
+      const filePath = path.join(__dirname, '..', settings.logo_path);
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    }
+    
+    settings.logo_path = '';
+    await settings.save();
+    
+    res.json(settings);
+  } catch (err) { res.status(400).json({ message: err.message }); }
+});
+
 module.exports = router;
