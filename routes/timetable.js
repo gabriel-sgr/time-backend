@@ -3,6 +3,8 @@ const Timetable = require('../models/Timetable');
 const Schedule = require('../models/Schedule');
 const { protect } = require('../middleware/auth');
 const TimetableGenerator = require('../services/timetableGenerator');
+const { generateTimetablePDF } = require('../services/pdfGenerator');
+const Settings = require('../models/Settings');
 const router = express.Router();
 
 router.post('/auto-generate', protect, async (req, res) => {
@@ -347,10 +349,11 @@ router.get('/validate', protect, async (req, res) => {
   }
 });
 
-// GET /api/timetable/class/:classId/download - Download timetable for specific class
+// GET /api/timetable/class/:classId/download - Download timetable for specific class (PDF or CSV)
 router.get('/class/:classId/download', protect, async (req, res) => {
   try {
     const classId = req.params.classId;
+    const format = req.query.format || 'pdf'; // Default to PDF
     
     // Fetch class info
     const Class = require('../models/Class');
@@ -362,7 +365,7 @@ router.get('/class/:classId/download', protect, async (req, res) => {
 
     // Fetch timetable entries for the class
     const entries = await Timetable.find({ class_id: classId })
-      .populate('subject_id', 'name')
+      .populate('subject_id', 'name weekly_hours')
       .populate('teacher_id', 'name')
       .populate('classroom_id', 'name')
       .sort({ day_of_week: 1, start_time: 1 });
@@ -371,31 +374,45 @@ router.get('/class/:classId/download', protect, async (req, res) => {
       return res.status(404).json({ message: 'No timetable entries found for this class' });
     }
 
-    // Map day numbers to day names
-    const dayNames = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    // Get settings for school name
+    const settings = await Settings.getSettings();
 
-    // Format data for CSV
-    const csvHeader = ['Day', 'Start Time', 'End Time', 'Subject', 'Teacher', 'Classroom'];
-    const csvRows = entries.map(entry => [
-      dayNames[entry.day_of_week],
-      entry.start_time,
-      entry.end_time,
-      entry.subject_id.name,
-      entry.teacher_id.name,
-      entry.classroom_id.name
-    ]);
+    if (format === 'pdf') {
+      // Generate PDF
+      const pdfBuffer = await generateTimetablePDF(entries, classInfo.name, settings);
+      
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="timetable_${classInfo.name.replace(/\s+/g, '_')}_${new Date().getTime()}.pdf"`);
+      res.setHeader('Content-Length', pdfBuffer.length);
+      
+      res.send(pdfBuffer);
+    } else {
+      // Generate CSV
+      const dayNames = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
-    // Create CSV content
-    const csvContent = [
-      csvHeader.join(','),
-      ...csvRows.map(row => row.map(cell => `"${cell}"`).join(','))
-    ].join('\n');
+      // Format data for CSV
+      const csvHeader = ['Day', 'Start Time', 'End Time', 'Subject', 'Teacher', 'Classroom'];
+      const csvRows = entries.map(entry => [
+        dayNames[entry.day_of_week],
+        entry.start_time,
+        entry.end_time,
+        entry.subject_id?.name || 'N/A',
+        entry.teacher_id?.name || 'N/A',
+        entry.classroom_id?.name || 'N/A'
+      ]);
 
-    // Set headers for file download
-    res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', `attachment; filename="timetable_${classInfo.name}_${new Date().getTime()}.csv"`);
-    
-    res.send(csvContent);
+      // Create CSV content
+      const csvContent = [
+        csvHeader.join(','),
+        ...csvRows.map(row => row.map(cell => `"${cell}"`).join(','))
+      ].join('\n');
+
+      // Set headers for file download
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="timetable_${classInfo.name.replace(/\s+/g, '_')}_${new Date().getTime()}.csv"`);
+      
+      res.send(csvContent);
+    }
   } catch (err) {
     console.error('Download error:', err);
     res.status(500).json({ message: err.message });
