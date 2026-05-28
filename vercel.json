@@ -1,7 +1,7 @@
 {
   "version": 2,
   "env": {
-    "TZ": "Africa/Kigali",
+    "LOCATION": "Africa/Kigali",
     "NODE_ENV": "production"
   },
   "builds": [
