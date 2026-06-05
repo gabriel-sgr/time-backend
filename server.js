@@ -1,7 +1,8 @@
 require('dotenv').config();
 
 // Set timezone to Kigali, Rwanda (East Africa Time - UTC+3)
-process.env.LOCATION = 'Africa/Kigali';
+// This must be set before any Date operations
+process.env.TZ = 'Africa/Kigali';
 
 const express = require('express');
 const cors = require('cors');

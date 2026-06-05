@@ -96,10 +96,64 @@ const toKigaliTime = (date) => {
   }).format(new Date(date));
 };
 
+/**
+ * Gets current time in HH:MM format in Kigali timezone
+ * @returns {string} - Current time in HH:MM format
+ */
+const getCurrentKigaliTimeHHMM = () => {
+  const formatter = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Africa/Kigali',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
+  return formatter.format(new Date());
+};
+
+/**
+ * Gets current day of week in Kigali timezone
+ * @returns {number} - Day of week (1=Monday, 7=Sunday)
+ */
+const getCurrentKigaliDay = () => {
+  const formatter = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Africa/Kigali',
+    weekday: 'long'
+  });
+  const dayName = formatter.format(new Date());
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const dayIndex = days.indexOf(dayName);
+  return dayIndex === 0 ? 7 : dayIndex; // 1=Mon..7=Sun
+};
+
+/**
+ * Gets current date start and end in Kigali timezone
+ * @returns {Object} - { start: Date, end: Date } for today in Kigali timezone
+ */
+const getTodayKigaliDateRange = () => {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Africa/Kigali',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+  const dateStr = formatter.format(new Date());
+  const [year, month, day] = dateStr.split('-').map(Number);
+  
+  // Create dates in UTC that represent the Kigali dates
+  // Note: This is approximate and works for display purposes
+  const start = new Date(Date.UTC(year, month - 1, day, 0, 0, 0));
+  const end = new Date(Date.UTC(year, month - 1, day, 23, 59, 59));
+  
+  return { start, end };
+};
+
 module.exports = {
   formatDateForKigali,
   getCurrentKigaliTime,
   toKigaliDateString,
   toKigaliDate,
-  toKigaliTime
+  toKigaliTime,
+  getCurrentKigaliTimeHHMM,
+  getCurrentKigaliDay,
+  getTodayKigaliDateRange
 };

@@ -21,7 +21,7 @@ async function generateTimetablePDF(timetableData, className, settings) {
       doc.moveDown(0.5);
 
       // Organize timetable by day
-      const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+      const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
       const timetableByDay = {};
 
       days.forEach(day => {
@@ -54,9 +54,8 @@ async function generateTimetablePDF(timetableData, className, settings) {
           const entry = timetableByDay[day].find(e => `${e.start_time}-${e.end_time}` === timeSlot);
           if (entry) {
             row.push(
-              `${entry.subject_id?.name || 'N/A'}\n` +
-              `${entry.teacher_id?.name || ''}\n` +
-              `Room: ${entry.classroom_id?.name || 'N/A'}`
+              `${entry.subject_id?.name || 'N/A'}.\n` +
+              `TH:${entry.teacher_id?.name || ''}\n` 
             );
           } else {
             row.push('');
