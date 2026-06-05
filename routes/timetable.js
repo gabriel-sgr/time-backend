@@ -5,6 +5,7 @@ const { protect } = require('../middleware/auth');
 const TimetableGenerator = require('../services/timetableGenerator');
 const { generateTimetablePDF } = require('../services/pdfGenerator');
 const Settings = require('../models/Settings');
+const { getCurrentKigaliTimeHHMM, getCurrentKigaliDay, getTodayKigaliDateRange } = require('../services/timezoneUtils');
 const router = express.Router();
 
 router.post('/auto-generate', protect, async (req, res) => {
@@ -90,13 +91,10 @@ router.get('/', async (req, res) => {
 // GET /api/timetable/current-session — for user dashboard
 router.get('/current-session', async (req, res) => {
   try {
-    const now = new Date();
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    const currentTime = `${hours}:${minutes}`;
-    const currentDay = now.getDay() === 0 ? 7 : now.getDay(); // 1=Mon..7=Sun
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const todayEnd = new Date(todayStart.getTime() + 86400000);
+    // Use Kigali timezone for all time calculations
+    const currentTime = getCurrentKigaliTimeHHMM();
+    const currentDay = getCurrentKigaliDay();
+    const { start: todayStart, end: todayEnd } = getTodayKigaliDateRange();
 
     // Get current period from TimePeriod model (added by admin)
     const TimePeriod = require('../models/TimePeriod');
@@ -192,13 +190,10 @@ router.get('/current-session', async (req, res) => {
 // GET /api/timetable/current-sessions — for display screens
 router.get('/current-sessions', async (req, res) => {
   try {
-    const now = new Date();
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    const currentTime = `${hours}:${minutes}`;
-    const currentDay = now.getDay() === 0 ? 7 : now.getDay(); // 1=Mon..7=Sun
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const todayEnd = new Date(todayStart.getTime() + 86400000);
+    // Use Kigali timezone for all time calculations
+    const currentTime = getCurrentKigaliTimeHHMM();
+    const currentDay = getCurrentKigaliDay();
+    const { start: todayStart, end: todayEnd } = getTodayKigaliDateRange();
 
     // Get current period from TimePeriod model (added by admin)
     const TimePeriod = require('../models/TimePeriod');
